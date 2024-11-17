@@ -26,7 +26,6 @@ char* header_path;
 
 void help(char* program_name);
 void usage(char* program_name);
-void help();
 int add(char* arg);
 int create_notebook(char* foldername);
 int create_header(char* filename);
@@ -133,12 +132,12 @@ void help(char* program_name) {
     printf("\n%s is written in c by Njoter - stianovesen@gmail.com\n\n", program_name);
     printf("-n, --notebook\n");
     printf("\tTakes the name of a notebook as an argument.\n"
-            "\tWhen set, the notebook can be removed, added to, or its content can be printed.\n"
-            "\tSee -a and -r for further explanation.\n");
+            "\tWhen set, the notebook can be removed, added to, or its content can be printed with -p.\n"
+            "\tSee -a, -r and -p for further explanation.\n");
     printf("-h, --header\n");
     printf("\tTakes the name of a header as an argument.\n"
-            "\tMuch like the --notebook option, when a header is set, it can be removed, added to, or its content can be printed.\n"
-            "\tA notebook MUST be set before a header can be set. See the --notebook option.\n");
+            "\tMuch like the --notebook option, when a header is set, it can be removed, added to, or its content can be printed with -p.\n"
+            "\tA notebook MUST be set before a header can be set. See -n.\n");
     printf("-a, --add\n");
     printf("\tThis option adds a thing. What kind of thing is added is dependent on wether a notebook or a header within a notebook is set.\n"
             "\tIf a notebook is set (but not a header), the program will add a header within that notebook.\n"

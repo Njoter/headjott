@@ -24,7 +24,8 @@ char* header;
 char* notebook_path;
 char* header_path;
 
-void usage(char program_name[]);
+void help(char* program_name);
+void usage(char* program_name);
 void help();
 int add(char* arg);
 int create_notebook(char* foldername);
@@ -66,6 +67,7 @@ int main(int argc, char *argv[]) {
 
     while (1) {
         static struct option long_options[] = {
+            {"help",        no_argument,        0,  'H'},
             {"notebook",    required_argument,  0,  'n'},
             {"header",      required_argument,  0,  'h'},
             {"add",         required_argument,  0,  'a'},
@@ -75,12 +77,16 @@ int main(int argc, char *argv[]) {
         };
 
         int option_index = 0;
-        c = getopt_long (argc, argv, "n:h:a:r:p", long_options, &option_index);
+        c = getopt_long (argc, argv, "Hn:h:a:r:p", long_options, &option_index);
 
         if (c == -1)
             break;
 
         switch (c) {
+            case 'H':
+                help(program_name);
+                free_stuff();
+                exit(0);
             case 'n':
                 set_notebook(optarg);
                 break;
@@ -123,12 +129,32 @@ void free_stuff() {
     free(PATH_TO_FILES);
 }
 
-void usage(char program_name[]) {
-    fprintf(stderr, "usage: %s [OPTION] {ARGUMENT}", program_name);
+void help(char* program_name) {
+    printf("\n%s is written in c by Njoter - stianovesen@gmail.com\n\n", program_name);
+    printf("-n, --notebook\n");
+    printf("\tTakes the name of a notebook as an argument.\n"
+            "\tWhen set, the notebook can be removed, added to, or its content can be printed.\n"
+            "\tSee -a and -r for further explanation.\n");
+    printf("-h, --header\n");
+    printf("\tTakes the name of a header as an argument.\n"
+            "\tMuch like the --notebook option, when a header is set, it can be removed, added to, or its content can be printed.\n"
+            "\tA notebook MUST be set before a header can be set. See the --notebook option.\n");
+    printf("-a, --add\n");
+    printf("\tThis option adds a thing. What kind of thing is added is dependent on wether a notebook or a header within a notebook is set.\n"
+            "\tIf a notebook is set (but not a header), the program will add a header within that notebook.\n"
+            "\tIf a header is set (can only be set if a notebook is already set), a line will be added under that header.\n"
+            "\tIf nothing is set, the program will add a new notebook. See --notebook and --header for more info.\n");
+    printf("-r, --remove\n");
+    printf("\tWork in progress.\n");
+    printf("-p, --print\n");
+    printf("\tWill print everything from the selected point.\n"
+            "\tIf a notebook is set, the program will print everything within that notebook.\n"
+            "\tIf a header is set, everything within that header will be printed.\n"
+            "\tIf nothing is set, everything will be printed.\n");
 }
 
-void help() {
-    printf("This is the help function");
+void usage(char* program_name) {
+    fprintf(stderr, "usage: %s [OPTION] {ARGUMENT}", program_name);
 }
 
 int add(char* arg) {
@@ -252,7 +278,9 @@ void print(int all) {
     char* arr[size];
 
     printf("\n");
-    printf(OPTLIST);
+    printf("%s\n", OPTLIST);
+    printf(ANSI_COLOR_RED "(notebook)");
+    printf(ANSI_COLOR_CYAN "\t(# header)" ANSI_COLOR_RESET);
     printf("\n-----------------------------------------------------------\n");
     if (notebook == NULL) {
         get_filenames(arr, PATH_TO_FILES);

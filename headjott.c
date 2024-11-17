@@ -7,6 +7,15 @@
 #include <errno.h>
 
 #define MAX_LENGTH 32
+#define OPTLIST "Options: [-H | -n | -h | -a | -r | -p] (-H for help)"
+
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
 
 char* HOME;
 char* PATH_TO_FILES;
@@ -62,12 +71,11 @@ int main(int argc, char *argv[]) {
             {"add",         required_argument,  0,  'a'},
             {"remove",      required_argument,  0,  'r'},
             {"print",       no_argument,        0,  'p'},
-            {"print-all",   no_argument,        0,  'P'},
             {0, 0, 0, 0}
         };
 
         int option_index = 0;
-        c = getopt_long (argc, argv, "n:h:a:r:pP", long_options, &option_index);
+        c = getopt_long (argc, argv, "n:h:a:r:p", long_options, &option_index);
 
         if (c == -1)
             break;
@@ -83,21 +91,24 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 'a':
-                add(optarg);
-                break;
+                free_stuff();
+                exit(add(optarg));
             case 'r':
                 printf("case r - optarg: %s", optarg);
-                break;
+                free_stuff();
+                exit(0);
             case 'p':
-                print(0);
-                break;
-            case 'P':
                 print(1);
-                break;
+                free_stuff();
+                exit(0);
+            case '?':
+                usage(program_name);
+                free_stuff();
+                exit(1);
         }
     }
 
-    //usage(program_name);
+    print(0);
     free_stuff();
     exit(0);
 }
@@ -240,7 +251,9 @@ void print(int all) {
     int size = count_files(PATH_TO_FILES);
     char* arr[size];
 
-    printf("-----------------------------------------------------------\n");
+    printf("\n");
+    printf(OPTLIST);
+    printf("\n-----------------------------------------------------------\n");
     if (notebook == NULL) {
         get_filenames(arr, PATH_TO_FILES);
         for (int i = 0; i < size; i++) {
@@ -261,7 +274,7 @@ void print_notebook(char* s, int all) {
     strcpy(path, PATH_TO_FILES);
     strcat(path, s);
 
-    printf("%s\n", s);
+    printf(ANSI_COLOR_RED "%s\n" ANSI_COLOR_RESET, s);
     int size = count_files(path);
     if (size > 0) {
         print_headers(path, size, 1, all);
@@ -275,7 +288,7 @@ void print_headers(char* path, int size, int indent, int all) {
         if (indent == 1) {
             printf("    ");
         }
-        printf("# %s\n", arr[i]);
+        printf(ANSI_COLOR_CYAN "# %s\n" ANSI_COLOR_RESET, arr[i]);
         if (all == 1) {
             char* s = malloc(strlen(path) + strlen(arr[i]) + 1);
             strcpy(s, path);

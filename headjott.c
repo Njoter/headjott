@@ -76,6 +76,7 @@ int main(int argc, char *argv[]) {
         };
 
         int option_index = 0;
+        int result;
         c = getopt_long (argc, argv, "Hn:h:a:r:p", long_options, &option_index);
 
         if (c == -1)
@@ -96,8 +97,9 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 'a':
+                result = add(optarg);
                 free_stuff();
-                exit(add(optarg));
+                exit(result);
             case 'r':
                 printf("case r - optarg: %s", optarg);
                 free_stuff();
@@ -153,7 +155,7 @@ void help(char* program_name) {
 }
 
 void usage(char* program_name) {
-    fprintf(stderr, "usage: %s [OPTION] {ARGUMENT}", program_name);
+    fprintf(stderr, "usage: %s [OPTION] [ARGUMENT]", program_name);
 }
 
 int add(char* arg) {

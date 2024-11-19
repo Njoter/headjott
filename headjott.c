@@ -5,9 +5,11 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <errno.h>
+#include <ftw.h>
+#include <unistd.h>
 
 #define MAX_LENGTH 32
-#define OPTLIST "Options: [-H | -n | -h | -a | -r | -p] (-H for help)"
+#define OPTLIST "Options: [-H | -n | -h | -a | -D | -p] (-H for help)"
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -31,6 +33,9 @@ int create_notebook(char* foldername);
 int create_header(char* filename);
 int append_line(char* arg);
 int folder_exists(char* path);
+int delete();
+int delete_header();
+int delete_notebook();
 void set_notebook(char* arg);
 int set_header(char* arg);
 void free_stuff();
@@ -70,14 +75,14 @@ int main(int argc, char *argv[]) {
             {"notebook",    required_argument,  0,  'n'},
             {"header",      required_argument,  0,  'h'},
             {"add",         required_argument,  0,  'a'},
-            {"remove",      required_argument,  0,  'r'},
+            {"delete",      no_argument,        0,  'D'},
             {"print",       no_argument,        0,  'p'},
             {0, 0, 0, 0}
         };
 
         int option_index = 0;
         int result;
-        c = getopt_long (argc, argv, "Hn:h:a:r:p", long_options, &option_index);
+        c = getopt_long (argc, argv, "Hn:h:a:Dp", long_options, &option_index);
 
         if (c == -1)
             break;
@@ -100,8 +105,8 @@ int main(int argc, char *argv[]) {
                 result = add(optarg);
                 free_stuff();
                 exit(result);
-            case 'r':
-                printf("case r - optarg: %s", optarg);
+            case 'D':
+                delete();
                 free_stuff();
                 exit(0);
             case 'p':
@@ -134,18 +139,18 @@ void help(char* program_name) {
     printf("\n%s is written in c by Njoter - stianovesen@gmail.com\n\n", program_name);
     printf("-n, --notebook\n");
     printf("\tTakes the name of a notebook as an argument.\n"
-            "\tWhen set, the notebook can be removed, added to, or its content can be printed with -p.\n"
-            "\tSee -a, -r and -p for further explanation.\n");
+            "\tWhen set, the notebook can be deleted, added to, or its content can be printed with -p.\n"
+            "\tSee -a, -d and -p for further explanation.\n");
     printf("-h, --header\n");
     printf("\tTakes the name of a header as an argument.\n"
-            "\tMuch like the --notebook option, when a header is set, it can be removed, added to, or its content can be printed with -p.\n"
+            "\tMuch like the --notebook option, when a header is set, it can be deleted, added to, or its content can be printed with -p.\n"
             "\tA notebook MUST be set before a header can be set. See -n.\n");
     printf("-a, --add\n");
     printf("\tThis option adds a thing. What kind of thing is added is dependent on wether a notebook or a header within a notebook is set.\n"
             "\tIf a notebook is set (but not a header), the program will add a header within that notebook.\n"
             "\tIf a header is set (can only be set if a notebook is already set), a line will be added under that header.\n"
             "\tIf nothing is set, the program will add a new notebook. See --notebook and --header for more info.\n");
-    printf("-r, --remove\n");
+    printf("-d, --delete\n");
     printf("\tWork in progress.\n");
     printf("-p, --print\n");
     printf("\tWill print everything from the selected point.\n"
@@ -156,6 +161,56 @@ void help(char* program_name) {
 
 void usage(char* program_name) {
     fprintf(stderr, "usage: %s [OPTION] [ARGUMENT]", program_name);
+}
+
+int delete() {
+    if (header != NULL) {
+        return(delete_header());
+    } else if (notebook != NULL) {
+        return(delete_notebook());
+    } else {
+        fprintf(stderr, "Please set a notebook or header to be deleted");
+        return 1;
+    }
+}
+
+int delete_header() {
+    if ((remove(header_path)) == 0) {
+        printf("%s deleted successfully\n", header);
+        return 0;
+    } else {
+        perror("Unable to delete file");
+        return 1;
+    }
+}
+
+int delete_notebook() {
+    DIR* dir = opendir(notebook_path);
+    if (dir == NULL) {
+        return 1;
+    }
+
+    struct dirent* entity;
+    while((entity = readdir(dir)) != NULL) {
+        if (strcmp("..", entity->d_name) != 0 && strcmp(".", entity->d_name) != 0) {
+            set_header(entity->d_name);
+            if (remove(header_path) == 0) {
+                printf("%s deleted successfully\n", header);
+            }
+            else {
+                fprintf(stderr, "Unable to delete %s\n", header);
+                return 1;
+            }
+        }
+    }
+
+    closedir(dir);
+    if (rmdir(notebook_path) == 0) {
+        printf("%s deleted successfully\n", notebook);
+    } else {
+        perror("Unable to delete notebook");
+    }
+    return rmdir(notebook_path);
 }
 
 int add(char* arg) {

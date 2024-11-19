@@ -19,7 +19,6 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-char* HOME;
 char* PATH_TO_FILES;
 char* notebook;
 char* header;
@@ -36,6 +35,7 @@ int folder_exists(char* path);
 int delete();
 int delete_header();
 int delete_notebook();
+int rename_item(char* arg);
 void set_notebook(char* arg);
 int set_header(char* arg);
 void free_stuff();
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     char* program_name = "headjott";
     int c;
 
-    HOME = getenv("HOME");
+    char* HOME = getenv("HOME");
     if (HOME != NULL) {
         char* s = "/.local/share/";
         char* t = "/files/";
@@ -76,13 +76,14 @@ int main(int argc, char *argv[]) {
             {"header",      required_argument,  0,  'h'},
             {"add",         required_argument,  0,  'a'},
             {"delete",      no_argument,        0,  'D'},
+            {"rename",      required_argument,  0,  'r'},
             {"print",       no_argument,        0,  'p'},
             {0, 0, 0, 0}
         };
 
         int option_index = 0;
         int result;
-        c = getopt_long (argc, argv, "Hn:h:a:Dp", long_options, &option_index);
+        c = getopt_long (argc, argv, "Hn:h:a:Dr:p", long_options, &option_index);
 
         if (c == -1)
             break;
@@ -109,6 +110,10 @@ int main(int argc, char *argv[]) {
                 delete();
                 free_stuff();
                 exit(0);
+            case 'r':
+                result = rename_item(optarg);
+                free_stuff();
+                exit(result);
             case 'p':
                 print(1);
                 free_stuff();
@@ -211,6 +216,34 @@ int delete_notebook() {
         perror("Unable to delete notebook");
     }
     return rmdir(notebook_path);
+}
+
+int rename_item(char* arg) {
+
+    int result;
+    if (header != NULL) {
+        char new_path[strlen(notebook_path) + strlen(arg) + 1];
+        strcpy(new_path, notebook_path);
+        strcat(new_path, "/");
+        strcat(new_path, arg);
+        result = rename(header_path, new_path);
+        if (result == 0) {
+            printf("Successfully renamed %s to %s.", header, arg);
+        }
+    } else if (notebook != NULL) {
+        char new_path[strlen(PATH_TO_FILES) + strlen(arg)];
+        strcpy(new_path, PATH_TO_FILES);
+        strcat(new_path, arg);
+        result = rename(notebook_path, new_path);
+        if (result == 0) {
+            printf("Successfully renamed %s to %s.", notebook, arg);
+        }
+    }
+
+    if (result != 0) {
+        fprintf(stderr, "Failed to rename file.");
+    }
+    return result;
 }
 
 int add(char* arg) {

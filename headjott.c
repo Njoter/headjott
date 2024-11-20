@@ -9,7 +9,7 @@
 #include <unistd.h>
 
 #define MAX_LENGTH 32
-#define OPTLIST "Options: [-H | -n | -h | -a | -D | -p] (-H for help)"
+#define OPTLIST "Options: [-H | -n | -h | -a | -D | -r | -p] (-H for help)"
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -25,6 +25,7 @@ char* header;
 char* notebook_path;
 char* header_path;
 
+void set_path_to_files(char* program_name);
 void help(char* program_name);
 void usage(char* program_name);
 int add(char* arg);
@@ -51,23 +52,13 @@ void get_filenames(char* strings[], char* path);
 int main(int argc, char *argv[]) {
 
     char* program_name = "headjott";
-    int c;
+    char* add_arg = NULL;
+    char* rename_arg = NULL;
+    int Dflag, pflag, Hflag;
+    int option_index = 0;
+    int c, result;
 
-    char* HOME = getenv("HOME");
-    if (HOME != NULL) {
-        char* s = "/.local/share/";
-        char* t = "/files/";
-        PATH_TO_FILES = malloc(
-                strlen(HOME) + strlen(s) + strlen(program_name) + strlen(t)
-        );
-        strcpy(PATH_TO_FILES, HOME);
-        strcat(PATH_TO_FILES, s);
-        strcat(PATH_TO_FILES, program_name);
-        strcat(PATH_TO_FILES, t);
-    } else {
-        fprintf(stderr, "Error: varible HOME is null");
-        exit(1);
-    }
+    set_path_to_files(program_name);
 
     while (1) {
         static struct option long_options[] = {
@@ -81,8 +72,6 @@ int main(int argc, char *argv[]) {
             {0, 0, 0, 0}
         };
 
-        int option_index = 0;
-        int result;
         c = getopt_long (argc, argv, "Hn:h:a:Dr:p", long_options, &option_index);
 
         if (c == -1)
@@ -90,9 +79,8 @@ int main(int argc, char *argv[]) {
 
         switch (c) {
             case 'H':
-                help(program_name);
-                free_stuff();
-                exit(0);
+                Hflag = 1;
+                break;
             case 'n':
                 set_notebook(optarg);
                 break;
@@ -103,21 +91,17 @@ int main(int argc, char *argv[]) {
                 }
                 break;
             case 'a':
-                result = add(optarg);
-                free_stuff();
-                exit(result);
+                add_arg = optarg;
+                break;
             case 'D':
-                delete();
-                free_stuff();
-                exit(0);
+                Dflag = 1;
+                break;
             case 'r':
-                result = rename_item(optarg);
-                free_stuff();
-                exit(result);
+                rename_arg = optarg;
+                break;
             case 'p':
-                print(1);
-                free_stuff();
-                exit(0);
+                pflag = 1;
+                break;
             case '?':
                 usage(program_name);
                 free_stuff();
@@ -125,9 +109,43 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    print(0);
+    if (Hflag == 1) {
+        help(program_name);
+        result = 0;
+    } else if (add_arg != NULL) {
+        result = add(add_arg);
+    } else if (rename_arg != NULL) {
+        result = rename_item(rename_arg);
+    } else if (Dflag == 1) {
+        result = delete();
+    } else if (pflag == 1) {
+        print(1);
+        result = 0;
+    } else {
+        print(0);
+        result = 0;
+    }
+
     free_stuff();
     exit(0);
+}
+
+void set_path_to_files(char* program_name) {
+    char* HOME = getenv("HOME");
+    if (HOME != NULL) {
+        char* s = "/.local/share/";
+        char* t = "/files/";
+        PATH_TO_FILES = malloc(
+                strlen(HOME) + strlen(s) + strlen(program_name) + strlen(t)
+        );
+        strcpy(PATH_TO_FILES, HOME);
+        strcat(PATH_TO_FILES, s);
+        strcat(PATH_TO_FILES, program_name);
+        strcat(PATH_TO_FILES, t);
+    } else {
+        fprintf(stderr, "Error: varible HOME is null\n");
+        exit(1);
+    }
 }
 
 void free_stuff() {
@@ -165,7 +183,7 @@ void help(char* program_name) {
 }
 
 void usage(char* program_name) {
-    fprintf(stderr, "usage: %s [OPTION] [ARGUMENT]", program_name);
+    fprintf(stderr, "usage: %s [OPTION] [ARGUMENT]\n", program_name);
 }
 
 int delete() {
@@ -174,7 +192,7 @@ int delete() {
     } else if (notebook != NULL) {
         return(delete_notebook());
     } else {
-        fprintf(stderr, "Please set a notebook or header to be deleted");
+        fprintf(stderr, "Please set a notebook or header to be deleted\n");
         return 1;
     }
 }
@@ -184,7 +202,7 @@ int delete_header() {
         printf("%s deleted successfully\n", header);
         return 0;
     } else {
-        perror("Unable to delete file");
+        perror("Unable to delete file\n");
         return 1;
     }
 }
@@ -213,7 +231,7 @@ int delete_notebook() {
     if (rmdir(notebook_path) == 0) {
         printf("%s deleted successfully\n", notebook);
     } else {
-        perror("Unable to delete notebook");
+        perror("Unable to delete notebook\n");
     }
     return rmdir(notebook_path);
 }
@@ -221,6 +239,11 @@ int delete_notebook() {
 int rename_item(char* arg) {
 
     int result;
+    if (strlen(arg) > MAX_LENGTH) {
+        fprintf(stderr, "Argument can't be longer than %d characters\n", MAX_LENGTH);
+        return 1;
+    }
+
     if (header != NULL) {
         char new_path[strlen(notebook_path) + strlen(arg) + 1];
         strcpy(new_path, notebook_path);
@@ -228,7 +251,7 @@ int rename_item(char* arg) {
         strcat(new_path, arg);
         result = rename(header_path, new_path);
         if (result == 0) {
-            printf("Successfully renamed %s to %s.", header, arg);
+            printf("Successfully renamed %s to %s.\n", header, arg);
         }
     } else if (notebook != NULL) {
         char new_path[strlen(PATH_TO_FILES) + strlen(arg)];
@@ -236,28 +259,35 @@ int rename_item(char* arg) {
         strcat(new_path, arg);
         result = rename(notebook_path, new_path);
         if (result == 0) {
-            printf("Successfully renamed %s to %s.", notebook, arg);
+            printf("Successfully renamed %s to %s.\n", notebook, arg);
         }
     }
 
     if (result != 0) {
-        fprintf(stderr, "Failed to rename file.");
+        fprintf(stderr, "Failed to rename file.\n");
     }
     return result;
 }
 
 int add(char* arg) {
 
+    int result;
+    if (strlen(arg) > MAX_LENGTH) {
+        fprintf(stderr, "Argument can't be longer than %d characters\n", MAX_LENGTH);
+        return 1;
+    }
+
     if (notebook == NULL) {
-        create_notebook(arg);
+        result = create_notebook(arg);
     } else if (folder_exists(notebook_path)) {
         if (header == NULL) {
-            create_header(arg);
+            result = create_header(arg);
         } else if (file_exists(header_path)) {
-            append_line(arg);
+            result = append_line(arg);
         }
     }
-    return 0;
+
+    return result;
 }
 
 int create_notebook(char* arg) {
@@ -267,11 +297,11 @@ int create_notebook(char* arg) {
     strcat(dir, arg);
 
     if (mkdir(dir, 0777) != 0) {
-        perror("Error creating notebook");
+        perror("Error creating notebook\n");
         return 1;
     }
 
-    printf("Successfully created notebook %s", arg);
+    printf("Successfully created notebook %s\n", arg);
     return 0;
 }
 
@@ -280,17 +310,18 @@ int create_header(char* arg) {
     set_header(arg);
 
     if (file_exists(header_path)) {
-        fprintf(stderr, "Header %s already exists in %s", arg, notebook);
+        fprintf(stderr, "Header %s already exists in %s\n", arg, notebook);
         return 1;
     }
 
     FILE* file = fopen(header_path, "w");
     if (file == NULL) {
-        perror("Error opening file");
+        perror("Error opening file\n");
         return 1;
     }
 
     fclose(file);
+    printf("Successfully created header %s\n", arg);
     return 0;
 }
 
@@ -298,7 +329,7 @@ int append_line(char* arg) {
 
     FILE* file = fopen(header_path, "a");
     if (file == NULL) {
-        perror("Error opening file");
+        perror("Error opening file\n");
         return 1;
     }
 
@@ -315,10 +346,10 @@ int folder_exists(char* path) {
         closedir(dir);
         return 1;
     } else if (ENOENT == errno) {
-        fprintf(stderr, "Error: can't find %s", path);
+        fprintf(stderr, "Error: can't find %s\n", path);
         return 0;
     } else {
-        fprintf(stderr, "Error opening %s", path);
+        fprintf(stderr, "Error opening %s\n", path);
         return -1;
     }
 }
@@ -347,7 +378,7 @@ void set_notebook(char* arg) {
 int set_header(char* arg) {
 
     if (notebook_path == NULL) {
-        fprintf(stderr, "Error: notebook not set. Please set notebook before setting header.");
+        fprintf(stderr, "Error: notebook not set. Please set notebook before setting header.\n");
         return 1;
     }    
 
@@ -368,8 +399,8 @@ void print(int all) {
 
     printf("\n");
     printf("%s\n", OPTLIST);
-    printf(ANSI_COLOR_RED "(notebook)");
-    printf(ANSI_COLOR_CYAN "\t(# header)" ANSI_COLOR_RESET);
+    printf(ANSI_COLOR_RED "(--notebook)");
+    printf(ANSI_COLOR_CYAN "\t(--header)" ANSI_COLOR_RESET);
     printf("\n-----------------------------------------------------------\n");
     if (notebook == NULL) {
         get_filenames(arr, PATH_TO_FILES);
@@ -422,7 +453,7 @@ int print_lines(char* path, int indent) {
 
     FILE* file = fopen(path, "r");
     if (file == NULL) {
-        perror("Error opening file");
+        perror("Error opening file\n");
         return 1;
     }
 

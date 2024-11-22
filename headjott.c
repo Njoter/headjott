@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <ftw.h>
 #include <unistd.h>
+#include <ctype.h>
 
 #define MAX_LENGTH 32
 #define OPTLIST "Options: [-H | -n | -h | -a | -D | -r | -p] (-H for help)"
@@ -37,7 +38,7 @@ int delete();
 int delete_header();
 int delete_notebook();
 int rename_item(char* arg);
-void set_notebook(char* arg);
+int set_notebook(char* arg);
 int set_header(char* arg);
 void free_stuff();
 int file_exists(char* path);
@@ -47,7 +48,7 @@ void print_headers(char* path, int size, int indent, int all);
 int print_lines(char* path, int indent);
 int count_files(char* path);
 void get_filenames(char* strings[], char* path);
-
+int yes_no();
 
 int main(int argc, char *argv[]) {
 
@@ -82,7 +83,10 @@ int main(int argc, char *argv[]) {
                 Hflag = 1;
                 break;
             case 'n':
-                set_notebook(optarg);
+                if (set_notebook(optarg) != 0) {
+                    free_stuff();
+                    exit(1);
+                }
                 break;
             case 'h':
                 if (set_header(optarg) != 0) {
@@ -188,9 +192,21 @@ void usage(char* program_name) {
 
 int delete() {
     if (header != NULL) {
-        return(delete_header());
+        printf("Are you sure you want to delete %s? 'y' to accept.\n", header);
+        if (yes_no() == 1) {
+            return(delete_header());
+        } else {
+            printf("%s not deleted.\n", header);
+            return 0;
+        }
     } else if (notebook != NULL) {
-        return(delete_notebook());
+        printf("Are you sure you want to delete %s? 'y' to accept.\n", notebook);
+        if (yes_no() == 1) {
+            return(delete_notebook());
+        } else {
+            printf("%s not deleted.\n", notebook);
+            return 0;
+        }
     } else {
         fprintf(stderr, "Please set a notebook or header to be deleted\n");
         return 1;
@@ -307,7 +323,12 @@ int create_notebook(char* arg) {
 
 int create_header(char* arg) {
 
-    set_header(arg);
+    header = arg;
+    char* s = malloc(strlen(notebook_path) + strlen(arg) + 1);
+    strcpy(s, notebook_path);
+    strcat(s, "/");
+    strcat(s, arg);
+    header_path = s;
 
     if (file_exists(header_path)) {
         fprintf(stderr, "Header %s already exists in %s\n", arg, notebook);
@@ -366,13 +387,33 @@ int file_exists(char* path) {
     }
 }
 
-void set_notebook(char* arg) {
+int set_notebook(char* arg) {
+
+    int exists = 0;
+
+    DIR* d = opendir(PATH_TO_FILES);
+    struct dirent *dir;
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+            if (strcmp(dir->d_name, arg) == 0) {
+                exists = 1;
+                break;
+            }
+        }
+        closedir(d);
+    }
+
+    if (exists == 0) {
+        printf("Error: notebook %s does not exist.\n", arg);
+        return 1;
+    }
 
     notebook = arg;
-    char* s = malloc(strlen(PATH_TO_FILES) + strlen(notebook));
+    char* s = malloc(strlen(PATH_TO_FILES) + strlen(arg));
     strcpy(s, PATH_TO_FILES);
-    strcat(s, notebook);
+    strcat(s, arg);
     notebook_path = s;
+    return 0;
 }
 
 int set_header(char* arg) {
@@ -381,6 +422,25 @@ int set_header(char* arg) {
         fprintf(stderr, "Error: notebook not set. Please set notebook before setting header.\n");
         return 1;
     }    
+
+    int exists = 0;
+
+    DIR* d = opendir(notebook_path);
+    struct dirent *dir;
+    if (d) {
+        while ((dir = readdir(d)) != NULL) {
+            if (strcmp(dir->d_name, arg) == 0) {
+                exists = 1;
+                break;
+            }
+        }
+        closedir(d);
+    }
+
+    if (exists == 0) {
+        printf("Error: header %s does not exist.\n", arg);
+        return 1;
+    }
 
     header = arg;
     char* s = malloc(strlen(notebook_path) + strlen(arg) + 1);
@@ -503,4 +563,15 @@ void get_filenames(char* strings[], char* path) {
         }
         closedir(d);
     }
+}
+
+int yes_no() {
+
+    char input;
+    scanf("%c", &input);
+    input = tolower(input);
+    if (input == 'y') {
+        return 1;
+    }
+    return 0;
 }

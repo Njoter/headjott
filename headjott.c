@@ -288,15 +288,18 @@ int rename_item(char* arg) {
 int add(char* arg) {
 
     int result;
-    if (strlen(arg) > MAX_LENGTH) {
-        fprintf(stderr, "Argument can't be longer than %d characters\n", MAX_LENGTH);
-        return 1;
-    }
-
     if (notebook == NULL) {
+        if (strlen(arg) > MAX_LENGTH) {
+            fprintf(stderr, "Argument can't be longer than %d characters\n", MAX_LENGTH);
+            return 1;
+        }
         result = create_notebook(arg);
     } else if (folder_exists(notebook_path)) {
         if (header == NULL) {
+            if (strlen(arg) > MAX_LENGTH) {
+                fprintf(stderr, "Argument can't be longer than %d characters\n", MAX_LENGTH);
+                return 1;
+            }
             result = create_header(arg);
         } else if (file_exists(header_path)) {
             result = append_line(arg);
